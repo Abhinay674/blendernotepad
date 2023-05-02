@@ -1,52 +1,62 @@
 import bpy
+import os
 
-# Import the shirt glTF file
-bpy.ops.import_scene.gltf(filepath="path/to/shirt.gltf")
+# Set the path to the input glTF file
+input_file = "path/to/input.gltf"
 
-# Get the imported object
-obj = bpy.context.selected_objects[0]
+# Set the path to the output glTF file
+output_file = "path/to/output.gltf"
 
-# Set the pivot point to the bottom of the object
-bpy.context.scene.cursor.location = obj.matrix_world @ obj.data.vertices[0].co
-bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+# Load the glTF file
+bpy.ops.import_scene.gltf(filepath=input_file)
 
-# Set the origin to the bottom of the object
-bpy.ops.object.editmode_toggle()
+# Find the imported object (assume there is only one)
+imported_obj = None
+for obj in bpy.context.scene.objects:
+    if obj.type == 'MESH':
+        imported_obj = obj
+        break
+
+if imported_obj is None:
+    raise Exception("No mesh object found in the imported glTF file.")
+
+# Create a cloth simulation for the imported mesh
+cloth = imported_obj.modifiers.new('Cloth', 'CLOTH')
+cloth.settings.vertex_group_mass = 'Group'
+cloth.settings.quality = 5
+cloth.settings.time_scale = 0.1
+cloth.settings.shear = 0.5
+cloth.settings.bending = 0.5
+cloth.settings.use_pressure = True
+
+# Set the shirt's properties
+imported_obj['Shirt Type'] = 'Folded'
+
+# Add a plane as the collision object
+collider = bpy.data.objects.new('Plane', bpy.data.meshes.new('Plane'))
+collider.location = (0, 0, 0)
+collider.scale = (10, 10, 10)
+bpy.context.scene.collection.objects.link(collider)
+
+# Set the collision object's properties
+collider['Collision Type'] = 'Plane'
+collider.hide_render = True
+collider.hide_viewport = True
+
+# Set up the cloth simulation
+bpy.context.scene.frame_set(0)
+bpy.ops.object.mode_set(mode='EDIT')
 bpy.ops.mesh.select_all(action='SELECT')
-bpy.ops.mesh.remove_doubles()
-bpy.ops.object.editmode_toggle()
-bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY')
+bpy.ops.transform.translate(value=(0, 0, 1))
+bpy.ops.object.mode_set(mode='OBJECT')
 
-# Define the fold planes
-fold_planes = [
-    {'axis': 'Y', 'direction': -1, 'position': 0.25},
-    {'axis': 'Y', 'direction': 1, 'position': -0.25},
-    {'axis': 'X', 'direction': -1, 'position': 0.25},
-    {'axis': 'X', 'direction': 1, 'position': -0.25},
-    {'axis': 'Z', 'direction': -1, 'position': 0.25},
-    {'axis': 'Z', 'direction': 1, 'position': -0.25},
-]
+bpy.context.scene.rigidbody_world.point_cache.frame_start = 0
+bpy.context.scene.rigidbody_world.point_cache.frame_end = 100
+bpy.context.scene.rigidbody_world.point_cache.use_disk_cache = True
+bpy.context.scene.rigidbody_world.point_cache.directory = "/tmp/blender_cache/"
 
-# Fold the object along each plane
-for plane in fold_planes:
-    # Create a plane object to use as the folding plane
-    bpy.ops.mesh.primitive_plane_add(size=2, enter_editmode=False, location=(0, 0, 0))
-    plane_obj = bpy.context.selected_objects[0]
-    plane_obj.rotation_euler.rotate_axis(plane['axis'], 1.5708)
-    plane_obj.location[0] = obj.dimensions[0] * (plane['axis'] == 'X') * plane['direction']
-    plane_obj.location[1] = obj.dimensions[1] * (plane['axis'] == 'Y') * plane['direction']
-    plane_obj.location[2] = obj.dimensions[2] * (plane['axis'] == 'Z') * plane['direction'] * plane['position']
-    
-    # Use the boolean modifier to fold the object along the plane
-    mod = obj.modifiers.new(name="fold", type='BOOLEAN')
-    mod.object = plane_obj
-    mod.operation = 'DIFFERENCE'
-    bpy.ops.object.modifier_apply(modifier=mod.name)
-    
-    # Delete the plane object
-    bpy.ops.object.select_all(action='DESELECT')
-    plane_obj.select_set(True)
-    bpy.ops.object.delete(use_global=False)
+# Run the simulation
+bpy.ops.ptcache.bake_all(bake=True)
 
-# Export the folded object as glTF
-bpy.ops.export_scene.gltf(filepath="path/to/folded_shirt.gltf", export_format='GLTF_EMBEDDED')
+# Export the folded shirt as a new glTF file
+bpy.ops.export_scene.gltf(filepath=output_file, export_format='GLTF_SEPARATE')
