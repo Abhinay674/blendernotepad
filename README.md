@@ -1,22 +1,25 @@
 import bpy
 
-bpy.ops.outliner.item_activate(extend_range=True, deselect_all=True)
-bpy.ops.outliner.item_activate(deselect_all=True)
-bpy.ops.outliner.item_activate(extend_range=True, deselect_all=True)
-bpy.ops.outliner.item_activate(extend_range=True, deselect_all=True)
-bpy.ops.outliner.item_activate(extend_range=True, deselect_all=True)
-bpy.ops.outliner.item_activate(extend_range=True, deselect_all=True)
-bpy.ops.outliner.item_activate(extend_range=True, deselect_all=True)
-bpy.ops.object.parent_set(type='OBJECT', keep_transform=False)
-bpy.context.space_data.context = 'OBJECT'
-bpy.context.object.location[2] = 0.769532
-bpy.context.object.location[0] = -0.07
-bpy.context.object.location[1] = 0.136199
-bpy.context.object.location[2] = 0.839532
-bpy.context.object.location[0] = -0.07
-bpy.context.object.location[1] = 0.106199
-bpy.context.object.location[2] = 0.779532
-bpy.context.object.location[0] = -0.07
+# Replace the path with the path to your new glTF file
+new_shirt_path = "/path/to/your/new/shirt.gltf"
 
+# Import the new shirt
+bpy.ops.import_scene.gltf(filepath=new_shirt_path)
 
+# Get a reference to the new shirt object
+new_shirt = bpy.context.selected_objects[0]
 
+# Get a reference to the hanger object
+hanger = bpy.data.objects["hanger"]
+
+# Set the new shirt as a child of the hanger
+new_shirt.parent = hanger
+
+# Position the new shirt on the hanger
+new_shirt.location = (0.0, 0.0, 0.0)
+new_shirt.rotation_euler = (0.0, 0.0, 0.0)
+new_shirt.scale = (1.0, 1.0, 1.0)
+
+# Remove the old shirt object
+old_shirt = bpy.data.objects["shirt"]
+bpy.data.objects.remove(old_shirt, do_unlink=True)
